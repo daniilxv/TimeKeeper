@@ -24,7 +24,6 @@ class TokenData(BaseModel):
 class Task(BaseModel):
     id: int
     title: str
-    description: str
     owner: str
     created_at: datetime
     # Новые поля
@@ -37,7 +36,6 @@ class Task(BaseModel):
 
 class TaskCreate(BaseModel):
     title: str
-    description: str
     # Новые поля (опциональные)
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
@@ -59,7 +57,6 @@ class TaskDB(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    description = Column(Text)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     # Новые колонки

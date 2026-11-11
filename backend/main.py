@@ -85,7 +85,6 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
 async def create_task(task_in: TaskCreate, current_user: UserDB = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     new_task = TaskDB(
         title=task_in.title,
-        description=task_in.description,
         owner_id=current_user.id,
         # Новые поля
         start_time=task_in.start_time,
@@ -98,7 +97,6 @@ async def create_task(task_in: TaskCreate, current_user: UserDB = Depends(get_cu
     return Task(
         id=new_task.id,
         title=new_task.title,
-        description=new_task.description,
         owner=current_user.email,
         created_at=new_task.created_at,
         # Новые поля в ответе
@@ -115,7 +113,6 @@ async def get_tasks(current_user: UserDB = Depends(get_current_user), db: AsyncS
         Task(
             id=task.id,
             title=task.title,
-            description=task.description,
             owner=current_user.email,
             created_at=task.created_at,
             # Новые поля в ответе

@@ -7,7 +7,6 @@ import './TaskModal.css';
 const TaskModal = memo(({ task, onClose, onSave, onDelete, canDelete }) => {
   const [formData, setFormData] = useState({
     title: task.title || '',
-    description: task.description || '',
     start_time: task.start_time ? formatForInput(new Date(task.start_time)) : formatForInput(roundToNearestHour(new Date())),
     end_time: task.end_time ? formatForInput(new Date(task.end_time)) : formatForInput(addHours(roundToNearestHour(new Date()), 1)),
     comment: task.comment || ''
@@ -17,7 +16,6 @@ const TaskModal = memo(({ task, onClose, onSave, onDelete, canDelete }) => {
     if (task) {
       setFormData({
         title: task.title || '',
-        description: task.description || '',
         start_time: task.start_time ? formatForInput(new Date(task.start_time)) : formatForInput(roundToNearestHour(new Date())),
         end_time: task.end_time ? formatForInput(new Date(task.end_time)) : formatForInput(addHours(roundToNearestHour(new Date()), 1)),
         comment: task.comment || ''
@@ -48,10 +46,6 @@ const TaskModal = memo(({ task, onClose, onSave, onDelete, canDelete }) => {
           <div className="form-group">
             <label htmlFor="title">Название *</label>
             <input id="title" name="title" type="text" value={formData.title} onChange={handleChange} required placeholder="Название задачи" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="description">Описание</label>
-            <textarea id="description" name="description" value={formData.description} onChange={handleChange} placeholder="Описание задачи" rows="3" />
           </div>
           <div className="form-row">
             <div className="form-group">

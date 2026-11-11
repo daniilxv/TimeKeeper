@@ -105,7 +105,6 @@ const TaskBlock = ({ task, top, height, zIndex, isMultiDay, onClick }) => {
             <span className="tooltip-duration">{duration} мин</span>
           </div>
           <div className="tooltip-title">{task.title}</div>
-          {task.description && <div className="tooltip-description">{task.description}</div>}
           {task.comment && <div className="tooltip-comment">{task.comment}</div>}
           {isMultiDay && <span className="tooltip-multiday">Многосуточная задача</span>}
         </div>

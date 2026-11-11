@@ -40,7 +40,7 @@ export function useCalendar(tasks) {
       const start = defaultStart || roundToNearestHour(new Date());
       const end = defaultEnd || addHours(start, 1);
       setSelectedTask({
-        id: null, title: '', description: '',
+        id: null, title: '',
         start_time: formatForInput(start),
         end_time: formatForInput(end),
         comment: '', owner: '', created_at: new Date().toISOString()
