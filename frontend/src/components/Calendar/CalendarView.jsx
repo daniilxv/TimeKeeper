@@ -22,9 +22,11 @@ const CalendarView = ({
                 currentTarget: { getBoundingClientRect: () => ({ top: 0 }) } 
               }, day, dayStartHour, hourHeight)}
             >
-              <div className="day-name">{formatDate(day, 'EEE')}</div>
               <div className="day-number">{formatDate(day, 'dd')}</div>
-              <div className="day-month">{formatDate(day, 'MMM')}</div>
+              <div className="day-name-month">
+                <div className="day-name">{formatDate(day, 'EEE')}</div>
+                <div className="day-month">{formatDate(day, 'MMM')}</div>
+              </div>
             </div>
           ))}
         </div>

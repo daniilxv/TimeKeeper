@@ -75,13 +75,17 @@ const TaskBlock = ({ task, top, height, zIndex, isMultiDay, onClick }) => {
       >
         {!isSmall && (
           <>
+            {/*
             <div className="task-block-time">{startTime} — {endTime}</div>
+            */}
             <div className="task-block-title">{task.title}</div>
           </>
         )}
         {isSmall && (
           <div className="task-small-content">
+            {/*
             <span className="task-small-time">{startTime}</span>
+            */}
             <span className="task-small-title">{task.title}</span>
           </div>
         )}
