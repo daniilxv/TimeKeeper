@@ -2,12 +2,20 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import api from './api';
 import AuthPage from './components/AuthPage';
+import ReactMarkdown from 'react-markdown';
 import './App.css';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [tasks, setTasks] = useState([]);
-  const [newTask, setNewTask] = useState({ title: '', description: '' });
+  // Обновленное состояние формы с новыми полями
+  const [newTask, setNewTask] = useState({ 
+    title: '', 
+    description: '', 
+    start_time: '', 
+    end_time: '', 
+    comment: '' 
+  });
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -33,11 +41,20 @@ function App() {
   const handleCreateTask = useCallback(async (e) => {
     e.preventDefault();
     try {
-      const response = await api.post('/tasks', newTask);
+      // Формируем payload, преобразуя даты в ISO строку, если они есть
+      const payload = {
+        ...newTask,
+        start_time: newTask.start_time ? new Date(newTask.start_time).toISOString() : null,
+        end_time: newTask.end_time ? new Date(newTask.end_time).toISOString() : null,
+        comment: newTask.comment || null
+      };
+      
+      const response = await api.post('/tasks', payload);
       setTasks(prev => [...prev, response.data]);
-      setNewTask({ title: '', description: '' });
+      // Сброс формы
+      setNewTask({ title: '', description: '', start_time: '', end_time: '', comment: '' });
     } catch (error) {
-      alert('Error creating task');
+      alert('Error creating task: ' + (error.response?.data?.detail || error.message));
     }
   }, [newTask]);
 
@@ -79,16 +96,23 @@ function App() {
   );
 }
 
-// Основной интерфейс задач - мемоизируем компонент
+// Основной интерфейс задач
 const MainApp = memo(({ token, tasks, newTask, handleCreateTask, logout, setNewTask }) => {
-  // Локальные обработчики ввода, чтобы не создавать новые функции на каждом рендере
-  const handleTitleChange = useCallback((e) => {
-    setNewTask(prev => ({ ...prev, title: e.target.value }));
+  // Обработчики изменений полей формы
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setNewTask(prev => ({ ...prev, [name]: value }));
   }, [setNewTask]);
 
-  const handleDescriptionChange = useCallback((e) => {
-    setNewTask(prev => ({ ...prev, description: e.target.value }));
-  }, [setNewTask]);
+  // Форматирование даты для отображения
+  const formatDateTime = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleString('ru-RU', { 
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  };
 
   return (
     <>
@@ -118,18 +142,56 @@ const MainApp = memo(({ token, tasks, newTask, handleCreateTask, logout, setNewT
           <form onSubmit={handleCreateTask} className="task-form">
             <div className="form-row">
               <input 
+                name="title"
                 placeholder="Название задачи" 
                 value={newTask.title} 
-                onChange={handleTitleChange}
+                onChange={handleChange}
                 required 
               />
               <input 
+                name="description"
                 placeholder="Описание" 
                 value={newTask.description} 
-                onChange={handleDescriptionChange}
+                onChange={handleChange}
                 required 
               />
             </div>
+            
+            <div className="form-row datetime-row">
+              <div className="form-group">
+                <label htmlFor="start_time">Начало</label>
+                <input 
+                  type="datetime-local"
+                  id="start_time"
+                  name="start_time"
+                  value={newTask.start_time} 
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="end_time">Окончание</label>
+                <input 
+                  type="datetime-local"
+                  id="end_time"
+                  name="end_time"
+                  value={newTask.end_time} 
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="form-group comment-group">
+              <label htmlFor="comment">Комментарий (Markdown)</label>
+              <textarea 
+                id="comment"
+                name="comment"
+                placeholder="Поддерживается Markdown: **жирный**, *курсив*, `код`, списки..."
+                value={newTask.comment} 
+                onChange={handleChange}
+                rows="4"
+              />
+            </div>
+            
             <button type="submit" className="add-task-btn">Добавить задачу</button>
           </form>
         </section>
@@ -149,10 +211,38 @@ const MainApp = memo(({ token, tasks, newTask, handleCreateTask, logout, setNewT
               {tasks.map(task => (
                 <li key={task.id} className="task-item">
                   <div className="task-content">
-                    <h3>{task.title}</h3>
-                    <p>{task.description}</p>
+                    <div className="task-header">
+                      <h3>{task.title}</h3>
+                      <span className="task-id">#{task.id}</span>
+                    </div>
+                    <p className="task-description">{task.description}</p>
+                    
+                    {/* Отображение времени */}
+                    {(task.start_time || task.end_time) && (
+                      <div className="task-datetime">
+                        {task.start_time && (
+                          <span className="datetime-badge start">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="icon"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Начало: {formatDateTime(task.start_time)}
+                          </span>
+                        )}
+                        {task.end_time && (
+                          <span className="datetime-badge end">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="icon"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Конец: {formatDateTime(task.end_time)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Отображение комментария с Markdown */}
+                    {task.comment && (
+                      <div className="task-comment">
+                        <h4>Комментарий:</h4>
+                        <ReactMarkdown className="markdown-body">{task.comment}</ReactMarkdown>
+                      </div>
+                    )}
                   </div>
-                  <span className="task-id">#{task.id}</span>
                 </li>
               ))}
             </ul>

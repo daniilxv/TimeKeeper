@@ -27,6 +27,10 @@ class Task(BaseModel):
     description: str
     owner: str
     created_at: datetime
+    # Новые поля
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    comment: Optional[str] = None  # Markdown текст
 
     class Config:
         from_attributes = True
@@ -34,6 +38,10 @@ class Task(BaseModel):
 class TaskCreate(BaseModel):
     title: str
     description: str
+    # Новые поля (опциональные)
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    comment: Optional[str] = None
 
 # SQLAlchemy модели (для БД)
 class UserDB(Base):
@@ -54,5 +62,9 @@ class TaskDB(Base):
     description = Column(Text)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Новые колонки
+    start_time = Column(DateTime, nullable=True)
+    end_time = Column(DateTime, nullable=True)
+    comment = Column(Text, nullable=True)  # Для хранения Markdown
     
     owner = relationship("UserDB", back_populates="tasks")

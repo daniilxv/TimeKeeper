@@ -86,7 +86,11 @@ async def create_task(task_in: TaskCreate, current_user: UserDB = Depends(get_cu
     new_task = TaskDB(
         title=task_in.title,
         description=task_in.description,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        # Новые поля
+        start_time=task_in.start_time,
+        end_time=task_in.end_time,
+        comment=task_in.comment
     )
     db.add(new_task)
     await db.commit()
@@ -96,7 +100,11 @@ async def create_task(task_in: TaskCreate, current_user: UserDB = Depends(get_cu
         title=new_task.title,
         description=new_task.description,
         owner=current_user.email,
-        created_at=new_task.created_at
+        created_at=new_task.created_at,
+        # Новые поля в ответе
+        start_time=new_task.start_time,
+        end_time=new_task.end_time,
+        comment=new_task.comment
     )
 
 @app.get("/tasks", response_model=List[Task])
@@ -109,7 +117,11 @@ async def get_tasks(current_user: UserDB = Depends(get_current_user), db: AsyncS
             title=task.title,
             description=task.description,
             owner=current_user.email,
-            created_at=task.created_at
+            created_at=task.created_at,
+            # Новые поля в ответе
+            start_time=task.start_time,
+            end_time=task.end_time,
+            comment=task.comment
         )
         for task in tasks
     ]
