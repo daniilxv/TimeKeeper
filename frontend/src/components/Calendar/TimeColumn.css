@@ -1,0 +1,5 @@
+.time-column { width: var(--time-column-width); flex-shrink: 0; background: var(--bg-white); border-right: 1px solid var(--border); position: sticky; left: 0; z-index: 10; }
+.time-column-header { height: var(--day-header-height); border-bottom: 1px solid var(--border); background: var(--bg); }
+.time-slot { height: var(--hour-height); border-bottom: 1px solid var(--border-light); position: relative; }
+.time-slot:last-child { border-bottom: none; }
+.time-label { position: absolute; top: 0; right: 8px; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }

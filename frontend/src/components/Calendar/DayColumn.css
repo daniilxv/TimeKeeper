@@ -1,0 +1,2 @@
+/* Стили наследуются от CalendarView.css, здесь только специфичные */
+.day-column { min-height: calc(var(--hour-height) * 16); }
