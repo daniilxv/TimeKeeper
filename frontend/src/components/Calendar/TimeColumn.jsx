@@ -5,7 +5,7 @@ const TimeColumn = ({ hourHeight, dayStartHour, visibleHours }) => {
   return (
     <div className="time-column">
       <div className="time-column-header"></div>
-      {Array.from({ length: visibleHours + 1 }, (_, i) => {
+      {Array.from({ length: visibleHours}, (_, i) => {
         const hour = dayStartHour + i;
         return (
           <div key={hour} className="time-slot" style={{ height: hourHeight }}>

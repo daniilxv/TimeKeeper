@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { formatDate } from '../../utils/dateUtils';
 import './TaskBlock.css';
 
-const TaskBlock = ({ task, top, height, zIndex, isMultiDay, onClick }) => {
+const TaskBlock = ({ task, top, height, left, width, zIndex, isMultiDay, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipRef = useRef(null);
@@ -53,16 +53,21 @@ const TaskBlock = ({ task, top, height, zIndex, isMultiDay, onClick }) => {
   const endTime = formatDate(new Date(task.end_time), 'HH:mm');
   const duration = Math.round((new Date(task.end_time) - new Date(task.start_time)) / 60000);
 
+  // Стили для позиционирования блока
+  const blockStyle = {
+    top: `${top}px`,
+    height: `${displayHeight}px`,
+    left: `${left}%`,
+    width: `${width}%`,
+    zIndex: isHovered ? 100 : zIndex
+  };
+
   return (
     <>
       <div
         ref={blockRef}
         className={`task-block ${isSmall ? 'task-small' : ''} ${isHovered ? 'task-hovered' : ''}`}
-        style={{ 
-          top: `${top}px`, 
-          height: `${displayHeight}px`, 
-          zIndex: isHovered ? 100 : zIndex 
-        }}
+        style={blockStyle}
         onClick={handleClick}
         onDoubleClick={handleClick}
         onMouseEnter={handleMouseEnter}

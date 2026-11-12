@@ -1,13 +1,16 @@
 import React from 'react';
 import TaskBlock from './TaskBlock';
 import { isSameDay } from '../../utils/dateUtils';
+import { computeDayLayout } from '../../utils/taskUtils';
 import './DayColumn.css';
 
 const DayColumn = ({ 
   day, dayIndex, tasks, hourHeight, dayStartHour, dayEndHour, visibleHours, 
   isToday, onSlotClick, getTaskPosition, onTaskClick 
 }) => {
-  visibleHours = visibleHours + 1;
+  // Используем новую функцию раскладки вместо getTaskPosition
+  const layouts = computeDayLayout(tasks, hourHeight, dayStartHour, dayEndHour);
+
   return (
     <div 
       className={`day-column ${isToday ? 'today' : ''}`}
@@ -21,8 +24,8 @@ const DayColumn = ({
         ))}
       </div>
       <div className="tasks-layer">
-        {tasks.map((task, taskIndex) => {
-          const { top, height } = getTaskPosition(task, hourHeight, dayStartHour, dayEndHour);
+        {layouts.map((layout, index) => {
+          const { task, top, height, left, width, zIndex } = layout;
           const isMultiDay = task.end_time && !isSameDay(new Date(task.start_time), new Date(task.end_time));
           return (
             <TaskBlock
@@ -30,7 +33,9 @@ const DayColumn = ({
               task={task}
               top={top}
               height={height}
-              zIndex={taskIndex + 1}
+              left={left}
+              width={width}
+              zIndex={zIndex}
               isMultiDay={isMultiDay}
               onClick={onTaskClick}
             />
