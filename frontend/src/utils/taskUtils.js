@@ -28,7 +28,7 @@ export function getTaskPosition(task, hourHeight, dayStartHour = 6, dayEndHour =
 export function computeDayLayout(tasks, hourHeight, dayStartHour = 0, dayEndHour = 24) {
   if (!tasks || tasks.length === 0) return [];
 
-  // 1. Преобразуем задачи в интервалы (минуты от начала дня)
+  // 1. Преобразуем задачи в интервалы
   const intervals = tasks.map((task, index) => {
     const start = parseFromBackend(task.start_time);
     const end = parseFromBackend(task.end_time);
@@ -43,57 +43,100 @@ export function computeDayLayout(tasks, hourHeight, dayStartHour = 0, dayEndHour
     };
   });
 
-  // 2. Сортируем по времени начала
-  intervals.sort((a, b) => a.startMinutes - b.startMinutes);
+  // 2. Сортируем по времени начала (а при равном начале — по длительности/концу)
+  intervals.sort((a, b) => a.startMinutes - b.startMinutes || b.endMinutes - a.endMinutes);
 
-  // 3. Определяем максимальную конкурентность (maxConcurrency) за весь день
-  //    через sweep line: события начала (+1) и конца (-1)
-  const events = [];
-  for (const interval of intervals) {
-    events.push({ time: interval.startMinutes, delta: +1 });
-    events.push({ time: interval.endMinutes, delta: -1 });
-  }
-  events.sort((a, b) => a.time - b.time || a.delta - b.delta); // концы раньше начал при равном времени
-
-  let current = 0;
-  let maxConcurrency = 0;
-  for (const e of events) {
-    current += e.delta;
-    if (current > maxConcurrency) maxConcurrency = current;
-  }
-  const laneCount = Math.max(1, maxConcurrency); // минимум 1 полоса
-
-  // 4. Распределяем задачи по полосам (lanes) жадным алгоритмом
-  const lanes = []; // lanes[i] = endMinutes последней задачи в полосе i
-  const layoutMap = new Map(); // task.index -> { lane, maxLanes }
+  // 3. Группируем в кластеры перекрытий
+  const clusters = [];
+  let currentCluster = [];
+  let clusterMaxEnd = -Infinity;
 
   for (const interval of intervals) {
-    let assignedLane = -1;
-    for (let i = 0; i < lanes.length; i++) {
-      if (interval.startMinutes >= lanes[i]) {
-        assignedLane = i;
-        lanes[i] = interval.endMinutes;
-        break;
+    if (currentCluster.length === 0) {
+      currentCluster.push(interval);
+      clusterMaxEnd = interval.endMinutes;
+    } else if (interval.startMinutes < clusterMaxEnd) {
+      currentCluster.push(interval);
+      clusterMaxEnd = Math.max(clusterMaxEnd, interval.endMinutes);
+    } else {
+      clusters.push(currentCluster);
+      currentCluster = [interval];
+      clusterMaxEnd = interval.endMinutes;
+    }
+  }
+  if (currentCluster.length > 0) clusters.push(currentCluster);
+
+  // 4. Распределяем по полосам (lanes) и вычисляем реальное число активных колонок
+  const layoutMap = new Map(); // task.index -> { lane, colSpan, maxLanes }
+
+  for (const cluster of clusters) {
+    const lanes = []; // Хранит время окончания последней задачи в полосе i
+    const clusterItems = [];
+
+    // Сначала раскидываем все задачи кластера по базовым lane
+    for (const interval of cluster) {
+      let assignedLane = -1;
+      for (let i = 0; i < lanes.length; i++) {
+        if (interval.startMinutes >= lanes[i]) {
+          assignedLane = i;
+          lanes[i] = interval.endMinutes;
+          break;
+        }
       }
+      if (assignedLane === -1) {
+        assignedLane = lanes.length;
+        lanes.push(interval.endMinutes);
+      }
+      clusterItems.push({ interval, lane: assignedLane });
     }
-    if (assignedLane === -1) {
-      assignedLane = lanes.length;
-      lanes.push(interval.endMinutes);
+
+    const totalLanes = lanes.length;
+
+    // Шаг интеллектуального расширения (Compaction / Span Expansion):
+    // Проверяем, может ли задача занять больше колонок вправо, если там пусто
+    for (const item of clusterItems) {
+      let span = 1;
+      // Пробуем расширяться вправо на каждую следующую колонку
+      for (let nextLane = item.lane + 1; nextLane < totalLanes; nextLane++) {
+        // Проверяем, есть ли в колонке `nextLane` хоть одна задача, пересекающаяся по времени с текущей
+        const hasConflict = clusterItems.some(other => {
+          if (other.lane !== nextLane) return false;
+          // Условие пересечения интервалов
+          return (
+            other.interval.startMinutes < item.interval.endMinutes &&
+            other.interval.endMinutes > item.interval.startMinutes
+          );
+        });
+
+        if (hasConflict) {
+           break; // Наткнулись на занятое пространство, дальше расширяться нельзя
+        } else {
+           span++; // Колонка свободна в этот промежуток, забираем её себе!
+        }
+      }
+
+      layoutMap.set(item.interval.index, {
+        lane: item.lane,
+        colSpan: span,
+        maxLanes: totalLanes
+      });
     }
-    layoutMap.set(interval.index, { lane: assignedLane, maxLanes: laneCount });
   }
 
   // 5. Формируем итоговый layout
   return intervals.map(interval => {
-    const { lane, maxLanes } = layoutMap.get(interval.index);
+    const { lane, colSpan, maxLanes } = layoutMap.get(interval.index);
+
+    // Базовая ширина одной колонки в процентах
+    const columnWidth = 100 / maxLanes;
+
+    const width = columnWidth * colSpan;
+    const left = columnWidth * lane;
+
     const top = Math.max(0, interval.startMinutes * (hourHeight / 60));
     const height = Math.max(hourHeight * 0.5, interval.durationMinutes * (hourHeight / 60));
-    
-    // Все задачи имеют одинаковую ширину: 100% / maxLanes
-    const width = 100 / maxLanes;
-    const left = lane * width;
-    
-    // zIndex: левее полосы (меньше lane) — выше, чтобы при микро-наложениях границ левее задачи были поверх
+
+    // zIndex: чем левее и шире элемент, тем ниже он должен быть (или наоборот, по вкусу)
     const zIndex = (maxLanes - lane) * 100 + interval.index;
 
     return {
