@@ -105,6 +105,25 @@ async def create_task(task_in: TaskCreate, current_user: UserDB = Depends(get_cu
         comment=new_task.comment
     )
 
+@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task(
+        task_id: int,
+        current_user: UserDB = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(TaskDB).where(TaskDB.id == task_id, TaskDB.owner_id == current_user.id)
+    )
+    task = result.scalars().first()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Задача не найдена"
+        )
+
+    await db.delete(task)
+    await db.commit()
+
 @app.get("/tasks", response_model=List[Task])
 async def get_tasks(current_user: UserDB = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(TaskDB).where(TaskDB.owner_id == current_user.id))

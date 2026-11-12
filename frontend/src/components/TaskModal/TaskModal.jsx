@@ -4,12 +4,14 @@ import { formatForInput, roundToNearestHour, addHours } from '../../utils/dateUt
 import MarkdownPreview from './MarkdownPreview';
 import './TaskModal.css';
 
-const TaskModal = memo(({ task, onClose, onSave, onDelete, canDelete }) => {
+const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => {
+  const currentTask = task || {};
+
   const [formData, setFormData] = useState({
-    title: task.title || '',
-    start_time: task.start_time ? formatForInput(new Date(task.start_time)) : formatForInput(roundToNearestHour(new Date())),
-    end_time: task.end_time ? formatForInput(new Date(task.end_time)) : formatForInput(addHours(roundToNearestHour(new Date()), 1)),
-    comment: task.comment || ''
+    title: currentTask.title || '',
+    start_time: currentTask.start_time ? formatForInput(new Date(currentTask.start_time)) : formatForInput(roundToNearestHour(new Date())),
+    end_time: currentTask.end_time ? formatForInput(new Date(currentTask.end_time)) : formatForInput(addHours(roundToNearestHour(new Date()), 1)),
+    comment: currentTask.comment || ''
   });
 
   useEffect(() => {
@@ -30,14 +32,14 @@ const TaskModal = memo(({ task, onClose, onSave, onDelete, canDelete }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData); // Передаем formData наружу
+    onSave(formData);
   };
 
   return (
     <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 id="modal-title">{task.id ? 'Редактировать задачу' : 'Новая задача'}</h2>
+          <h2 id="modal-title">{currentTask.id ? 'Редактировать задачу' : 'Новая задача'}</h2>
           <button onClick={onClose} className="modal-close" aria-label="Закрыть">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -64,14 +66,14 @@ const TaskModal = memo(({ task, onClose, onSave, onDelete, canDelete }) => {
           {formData.comment && <MarkdownPreview content={formData.comment} />}
           <div className="modal-actions">
             {canDelete && (
-              <button type="button" onClick={onDelete} className="btn-danger">
+              <button type="button" onClick={onDelete} className={`btn-danger ${!currentTask.id ? 'is-hidden' : ''}`}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                 Удалить
               </button>
             )}
-            <div className="modal-actions-right">
+            <div className={!currentTask.id ? "modal-actions":"modal-actions-right"}>
               <button type="button" onClick={onClose} className="btn-secondary">Отмена</button>
-              <button type="submit" className="btn-primary">{task.id ? 'Сохранить' : 'Создать'}</button>
+              <button type="submit" className="btn-primary">{currentTask.id ? 'Сохранить' : 'Создать'}</button>
             </div>
           </div>
         </form>

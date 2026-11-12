@@ -6,8 +6,16 @@ export function useTasks(initialTasks = []) {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const response = await api.get('/tasks');
-      setTasks(response.data);
+      // Загружаем и локальные задачи, и события из Google параллельно
+      const [localResponse, googleResponse] = await Promise.allSettled([
+        api.get('/tasks'),
+        api.get('/tasks/google')
+      ]);
+
+      const localTasks = localResponse.status === 'fulfilled' ? localResponse.value.data : [];
+      const googleTasks = googleResponse.status === 'fulfilled' ? googleResponse.value.data : [];
+      
+      setTasks([...localTasks, ...googleTasks]);
     } catch (error) {
       console.error('Error fetching tasks', error);
       throw error;
