@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import api from '../api';
+import { parseFromBackend } from '../utils/dateUtils';
 
 export function useTasks(initialTasks = []) {
   const [tasks, setTasks] = useState(initialTasks);
@@ -15,6 +16,8 @@ export function useTasks(initialTasks = []) {
       const localTasks = localResponse.status === 'fulfilled' ? localResponse.value.data : [];
       const googleTasks = googleResponse.status === 'fulfilled' ? googleResponse.value.data : [];
       
+      // Google задачи уже должны приходить с правильными таймзонами от бэкенда
+      // Локальные задачи приходят в UTC от бэкенда
       setTasks([...localTasks, ...googleTasks]);
     } catch (error) {
       console.error('Error fetching tasks', error);
@@ -23,12 +26,14 @@ export function useTasks(initialTasks = []) {
   }, []);
 
   const createTask = useCallback(async (taskData) => {
+    // taskData уже содержит UTC ISO строки от TaskModal
     const response = await api.post('/tasks', taskData);
     setTasks(prev => [...prev, response.data]);
     return response.data;
   }, []);
 
   const updateTask = useCallback(async (id, taskData) => {
+    // taskData уже содержит UTC ISO строки от TaskModal
     const response = await api.put(`/tasks/${id}`, taskData);
     setTasks(prev => prev.map(t => t.id === id ? response.data : t));
     return response.data;

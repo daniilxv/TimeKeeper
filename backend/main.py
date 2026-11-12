@@ -5,11 +5,12 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 # Убираем declarative_base отсюда
 # from sqlalchemy.orm import declarative_base
 
-from models import User, UserCreate, Token, Task, TaskCreate, TaskDB, UserDB
+from models import User, UserCreate, Token, Task, TaskCreate, TaskDB, UserDB, TaskUpdate
 from auth import (
     get_password_hash, 
     verify_password, 
@@ -83,12 +84,21 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
 
 @app.post("/tasks", response_model=Task)
 async def create_task(task_in: TaskCreate, current_user: UserDB = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # Приводим к UTC если есть таймзона, иначе считаем UTC
+    start_time = task_in.start_time
+    end_time = task_in.end_time
+    
+    if start_time and start_time.tzinfo is not None:
+        start_time = start_time.astimezone(timezone.utc)
+    if end_time and end_time.tzinfo is not None:
+        end_time = end_time.astimezone(timezone.utc)
+    
     new_task = TaskDB(
         title=task_in.title,
         owner_id=current_user.id,
-        # Новые поля
-        start_time=task_in.start_time,
-        end_time=task_in.end_time,
+        # Новые поля - сохраняем в UTC
+        start_time=start_time,
+        end_time=end_time,
         comment=task_in.comment
     )
     db.add(new_task)
@@ -99,10 +109,59 @@ async def create_task(task_in: TaskCreate, current_user: UserDB = Depends(get_cu
         title=new_task.title,
         owner=current_user.email,
         created_at=new_task.created_at,
-        # Новые поля в ответе
+        # Новые поля в ответе - возвращаем в UTC
         start_time=new_task.start_time,
         end_time=new_task.end_time,
         comment=new_task.comment
+    )
+
+@app.put("/tasks/{task_id}", response_model=Task)
+async def update_task(
+    task_id: int,
+    task_in: TaskUpdate,
+    current_user: UserDB = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    # Ищем задачу по ID и проверяем, что она принадлежит текущему пользователю
+    result = await db.execute(
+        select(TaskDB).where(TaskDB.id == task_id, TaskDB.owner_id == current_user.id)
+    )
+    task = result.scalars().first()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Задача не найдена"
+        )
+
+    # Обновляем только те поля, которые реально передали в запросе
+    update_data = task_in.model_dump(exclude_unset=True)
+    
+    # Обрабатываем даты - приводим к UTC
+    if 'start_time' in update_data and update_data['start_time'] is not None:
+        dt = update_data['start_time']
+        if dt.tzinfo is not None:
+            update_data['start_time'] = dt.astimezone(timezone.utc)
+    if 'end_time' in update_data and update_data['end_time'] is not None:
+        dt = update_data['end_time']
+        if dt.tzinfo is not None:
+            update_data['end_time'] = dt.astimezone(timezone.utc)
+    
+    for key, value in update_data.items():
+        setattr(task, key, value)
+
+    await db.commit()
+    await db.refresh(task)
+
+    # Возвращаем обновленную задачу
+    return Task(
+        id=task.id,
+        title=task.title,
+        owner=current_user.email,
+        created_at=task.created_at,
+        start_time=task.start_time,
+        end_time=task.end_time,
+        comment=task.comment
     )
 
 @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -134,7 +193,7 @@ async def get_tasks(current_user: UserDB = Depends(get_current_user), db: AsyncS
             title=task.title,
             owner=current_user.email,
             created_at=task.created_at,
-            # Новые поля в ответе
+            # Новые поля в ответе - возвращаем в UTC
             start_time=task.start_time,
             end_time=task.end_time,
             comment=task.comment

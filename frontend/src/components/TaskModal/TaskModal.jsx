@@ -1,16 +1,31 @@
 import React, { useState, useEffect, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { formatForInput, roundToNearestHour, addHours } from '../../utils/dateUtils';
+import { formatForInput, formatForBackend, parseFromBackend, roundToNearestHour, addHours } from '../../utils/dateUtils';
 import MarkdownPreview from './MarkdownPreview';
 import './TaskModal.css';
+
+// Вспомогательная функция для безопасного парсинга даты из БД (UTC -> локальное время)
+const parseTaskDate = (dateStr) => {
+  if (!dateStr) return null;
+  return parseFromBackend(dateStr);
+};
 
 const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => {
   const currentTask = task || {};
 
+  // Функция для подготовки начального состояния даты
+  const getInitialTime = (dateStr, fallbackFn) => {
+    if (!dateStr) return formatForInput(fallbackFn());
+    
+    // Парсим UTC строку из БД в локальное время для input
+    const localDate = parseTaskDate(dateStr);
+    return formatForInput(localDate);
+  };
+
   const [formData, setFormData] = useState({
     title: currentTask.title || '',
-    start_time: currentTask.start_time ? formatForInput(new Date(currentTask.start_time)) : formatForInput(roundToNearestHour(new Date())),
-    end_time: currentTask.end_time ? formatForInput(new Date(currentTask.end_time)) : formatForInput(addHours(roundToNearestHour(new Date()), 1)),
+    start_time: getInitialTime(currentTask.start_time, roundToNearestHour),
+    end_time: getInitialTime(currentTask.end_time, () => addHours(roundToNearestHour(new Date()), 1)),
     comment: currentTask.comment || ''
   });
 
@@ -18,8 +33,8 @@ const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => 
     if (task) {
       setFormData({
         title: task.title || '',
-        start_time: task.start_time ? formatForInput(new Date(task.start_time)) : formatForInput(roundToNearestHour(new Date())),
-        end_time: task.end_time ? formatForInput(new Date(task.end_time)) : formatForInput(addHours(roundToNearestHour(new Date()), 1)),
+        start_time: getInitialTime(task.start_time, roundToNearestHour),
+        end_time: getInitialTime(task.end_time, () => addHours(roundToNearestHour(new Date()), 1)),
         comment: task.comment || ''
       });
     }
@@ -32,7 +47,14 @@ const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    // Конвертируем локальное время из input в UTC ISO строки для бэкенда
+    const payload = {
+      ...formData,
+      start_time: formData.start_time ? formatForBackend(new Date(formData.start_time)) : null,
+      end_time: formData.end_time ? formatForBackend(new Date(formData.end_time)) : null,
+      comment: formData.comment || null
+    };
+    onSave(payload);
   };
 
   return (

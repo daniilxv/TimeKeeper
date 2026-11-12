@@ -45,9 +45,38 @@ export function formatDate(date, format) {
     .replace('EEE', dayShort);
 }
 
+/**
+ * Форматирует дату для datetime-local input (локальное время без таймзоны)
+ * Ожидает Date объект в локальном времени
+ */
 export function formatForInput(date) {
   const d = new Date(date);
-  return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+  // Возвращаем локальное время в формате YYYY-MM-DDTHH:MM
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
+ * Конвертирует локальную дату в UTC ISO строку для отправки на бэкенд
+ * Ожидает Date объект в локальном времени
+ */
+export function formatForBackend(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  return d.toISOString(); // Конвертирует в UTC с суффиксом Z
+}
+
+/**
+ * Парсит UTC ISO строку с бэкенда в локальную дату для отображения
+ */
+export function parseFromBackend(isoString) {
+  if (!isoString) return null;
+  // new Date() автоматически парсит UTC и конвертирует в локальное время
+  return new Date(isoString);
 }
 
 export function roundToNearestHour(date) {

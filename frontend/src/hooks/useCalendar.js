@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { 
-  getWeekStart, addDays, getWeekDays, formatDate, roundToNearestHour, formatForInput, addHours
+  getWeekStart, addDays, getWeekDays, formatDate, roundToNearestHour, formatForInput, addHours, parseFromBackend
 } from '../utils/dateUtils';
 import { filterWeekTasks, groupTasksByDay, getTaskPosition } from '../utils/taskUtils';
 

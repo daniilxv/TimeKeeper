@@ -10,6 +10,12 @@ class User(BaseModel):
     email: EmailStr
     username: Optional[str] = None
 
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    comment: Optional[str] = None
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -48,7 +54,7 @@ class UserDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     
     tasks = relationship("TaskDB", back_populates="owner")
 
@@ -58,10 +64,10 @@ class TaskDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    # Новые колонки
-    start_time = Column(DateTime, nullable=True)
-    end_time = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    # Новые колонки - храним в UTC с таймзоной
+    start_time = Column(DateTime(timezone=True), nullable=True)
+    end_time = Column(DateTime(timezone=True), nullable=True)
     comment = Column(Text, nullable=True)  # Для хранения Markdown
     
     owner = relationship("UserDB", back_populates="tasks")
