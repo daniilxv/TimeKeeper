@@ -1,28 +1,30 @@
+from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 import os
 
-# Базовый класс для моделей — должен быть доступен до импорта моделей
-Base = declarative_base()
+class Base(DeclarativeBase):
+    metadata = MetaData()
 
-# PostgreSQL асинхронный движок
-# Используем asyncpg драйвер: postgresql+asyncpg://user:password@host:port/dbname
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://my_user:password@localhost:5432/mydatabase"
-)
+DATABASE_URL = "postgresql+asyncpg://my_user:password@localhost:5432/mydatabase"
 
 engine = create_async_engine(
     DATABASE_URL,
     echo=True,
-    pool_pre_ping=True,  # Проверка соединения перед использованием
-    pool_size=10,        # Размер пула соединений
-    max_overflow=20      # Максимальное количество дополнительных соединений
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    # Вот этот блок заставляет asyncpg явно знать, куда писать таблицы
+    connect_args={
+        "server_settings": {
+            "search_path": "public"
+        }
+    }
 )
 
 AsyncSessionLocal = async_sessionmaker(
-    engine, 
-    class_=AsyncSession, 
+    engine,
+    class_=AsyncSession,
     expire_on_commit=False
 )
 

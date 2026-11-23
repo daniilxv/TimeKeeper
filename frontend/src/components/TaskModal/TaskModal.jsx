@@ -4,20 +4,16 @@ import { formatForInput, formatForBackend, parseFromBackend, roundToNearestHour,
 import MarkdownPreview from './MarkdownPreview';
 import './TaskModal.css';
 
-// Вспомогательная функция для безопасного парсинга даты из БД (UTC -> локальное время)
 const parseTaskDate = (dateStr) => {
   if (!dateStr) return null;
   return parseFromBackend(dateStr);
 };
 
-const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => {
+const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete, categories = [] }) => {
   const currentTask = task || {};
 
-  // Функция для подготовки начального состояния даты
   const getInitialTime = (dateStr, fallbackFn) => {
     if (!dateStr) return formatForInput(fallbackFn());
-    
-    // Парсим UTC строку из БД в локальное время для input
     const localDate = parseTaskDate(dateStr);
     return formatForInput(localDate);
   };
@@ -26,7 +22,8 @@ const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => 
     title: currentTask.title || '',
     start_time: getInitialTime(currentTask.start_time, roundToNearestHour),
     end_time: getInitialTime(currentTask.end_time, () => addHours(roundToNearestHour(new Date()), 1)),
-    comment: currentTask.comment || ''
+    comment: currentTask.comment || '',
+    category_id: currentTask.category_id || ''
   });
 
   useEffect(() => {
@@ -35,24 +32,25 @@ const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => 
         title: task.title || '',
         start_time: getInitialTime(task.start_time, roundToNearestHour),
         end_time: getInitialTime(task.end_time, () => addHours(roundToNearestHour(new Date()), 1)),
-        comment: task.comment || ''
+        comment: task.comment || '',
+        category_id: task.category_id || ''
       });
     }
   }, [task]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value === '' ? null : value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Конвертируем локальное время из input в UTC ISO строки для бэкенда
     const payload = {
       ...formData,
       start_time: formData.start_time ? formatForBackend(new Date(formData.start_time)) : null,
       end_time: formData.end_time ? formatForBackend(new Date(formData.end_time)) : null,
-      comment: formData.comment || null
+      comment: formData.comment || null,
+      category_id: formData.category_id || null
     };
     onSave(payload);
   };
@@ -82,6 +80,17 @@ const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => 
             </div>
           </div>
           <div className="form-group">
+            <label htmlFor="category_id">Категория</label>
+            <select id="category_id" name="category_id" value={formData.category_id || ''} onChange={handleChange}>
+              <option value="">Без категории</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id} style={{ borderLeft: `3px solid ${cat.color}` }}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
             <label htmlFor="comment">Комментарий (Markdown)</label>
             <textarea id="comment" name="comment" value={formData.comment} onChange={handleChange} placeholder="**Жирный**, *курсив*, `код`, списки..." rows="4" />
           </div>
@@ -93,7 +102,7 @@ const TaskModal = memo(({ task = {}, onClose, onSave, onDelete, canDelete }) => 
                 Удалить
               </button>
             )}
-            <div className={!currentTask.id ? "modal-actions":"modal-actions-right"}>
+            <div className={!currentTask.id ? "modal-actions" : "modal-actions-right"}>
               <button type="button" onClick={onClose} className="btn-secondary">Отмена</button>
               <button type="submit" className="btn-primary">{currentTask.id ? 'Сохранить' : 'Создать'}</button>
             </div>

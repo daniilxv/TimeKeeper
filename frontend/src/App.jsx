@@ -5,6 +5,7 @@ import Header from './components/Header/Header';
 import CalendarView from './components/Calendar/CalendarView';
 import TaskModal from './components/TaskModal/TaskModal';
 import SettingsPage from './components/SettingsPage';
+import CategoriesPage from './components/CategoriesPage';
 import { useAuth } from './hooks/useAuth';
 import { useTasks } from './hooks/useTasks';
 import { useCalendar } from './hooks/useCalendar';
@@ -12,13 +13,14 @@ import api from './api';
 import './App.css';
 
 // Обертка для маршрутов, чтобы иметь доступ к useNavigate
-function RoutesWrapper({ 
+function RoutesWrapper({
   token, login, logout, isAuthenticated,
   tasks, fetchTasks, createTask, updateTask, deleteTask,
   calendar,
   googleConnected, setGoogleConnected,
   checkingGoogle, setCheckingGoogle,
-  showSettings, setShowSettings
+  showSettings, setShowSettings,
+  showCategories, setShowCategories
 }) {
   const navigate = useNavigate();
 
@@ -81,9 +83,8 @@ function RoutesWrapper({
     }
   };
 
-const handleDelete = async () => {
+  const handleDelete = async () => {
     if (!calendar.selectedTask || !calendar.selectedTask.id) {
-      // Если это новая задача (ещё не создана в БД), просто закрываем модалку
       calendar.closeTaskModal();
       return;
     }
@@ -108,8 +109,8 @@ const handleDelete = async () => {
   return (
     <Routes>
       <Route path="/login" element={<AuthPage onLogin={login} />} />
-      <Route 
-        path="/" 
+      <Route
+        path="/"
         element={
           <ProtectedRoute>
             <div className="app-inner">
@@ -133,10 +134,15 @@ const handleDelete = async () => {
                   calendar.setDayEndHour(end);
                 }}
                 onOpenSettings={() => setShowSettings(true)}
+                onOpenCategories={() => setShowCategories(true)}
+                showCategories={showCategories}
+                setShowCategories={setShowCategories}
               />
               <main className="app-main">
                 {showSettings ? (
                   <SettingsPage onBack={() => setShowSettings(false)} />
+                ) : showCategories ? (
+                  <CategoriesPage onBack={() => setShowCategories(false)} />
                 ) : (
                   <CalendarView
                     weekDays={calendar.weekDays}
@@ -151,7 +157,7 @@ const handleDelete = async () => {
                   />
                 )}
               </main>
-              {calendar.selectedTask && !showSettings && (
+              {calendar.selectedTask && !showSettings && !showCategories && (
                 <TaskModal
                   task={calendar.selectedTask}
                   onClose={calendar.closeTaskModal}
@@ -162,7 +168,7 @@ const handleDelete = async () => {
               )}
             </div>
           </ProtectedRoute>
-        } 
+        }
       />
       <Route
         path="/settings"
@@ -189,6 +195,9 @@ const handleDelete = async () => {
                   calendar.setDayEndHour(end);
                 }}
                 onOpenSettings={() => setShowSettings(true)}
+                onOpenCategories={() => setShowCategories(true)}
+                showCategories={showCategories}
+                setShowCategories={setShowCategories}
               />
               <main className="app-main">
                 <SettingsPage onBack={() => navigate('/')} />
@@ -209,6 +218,7 @@ function App() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [checkingGoogle, setCheckingGoogle] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -262,6 +272,8 @@ function App() {
           setCheckingGoogle={setCheckingGoogle}
           showSettings={showSettings}
           setShowSettings={setShowSettings}
+          showCategories={showCategories}
+          setShowCategories={setShowCategories}
         />
       </div>
     </Router>

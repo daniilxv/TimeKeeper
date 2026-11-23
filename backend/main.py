@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 # Убираем declarative_base отсюда
 # from sqlalchemy.orm import declarative_base
 
-from models import User, UserCreate, Token, Task, TaskCreate, TaskDB, UserDB, TaskUpdate
+from models import User, UserCreate, Token, Task, TaskCreate, TaskDB, UserDB, TaskUpdate, Category, CategoryUpdate, \
+    CategoryDB
 from auth import (
     get_password_hash, 
     verify_password, 
@@ -216,3 +217,42 @@ async def test_auth(current_user: UserDB = Depends(get_current_user)):
 @app.get("/test-public")
 async def test_public():
     return {"message": "Public endpoint accessible without authentication"}
+
+
+@app.put("/categories/{category_id}", response_model=Category)
+async def update_category(category_id: int, cat_in: CategoryUpdate, current_user: UserDB = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(CategoryDB).where(CategoryDB.id == category_id, CategoryDB.user_id == current_user.id)
+    )
+    category = result.scalar_one_or_none()
+    if not category:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    update_data = cat_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(category, field, value)
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+@app.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_category(category_id: int, current_user: UserDB = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(CategoryDB).where(CategoryDB.id == category_id, CategoryDB.user_id == current_user.id)
+    )
+    category = result.scalar_one_or_none()
+    if not category:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    await db.delete(category)
+    await db.commit()
+
+@app.get("/categories", response_model=List[Category])
+async def get_categories(
+    current_user: UserDB = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получение списка всех категорий текущего пользователя"""
+    result = await db.execute(
+        select(CategoryDB).where(CategoryDB.user_id == current_user.id)
+    )
+    categories = result.scalars().all()
+    return categories

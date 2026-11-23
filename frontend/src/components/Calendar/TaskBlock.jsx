@@ -8,23 +8,19 @@ const TaskBlock = ({ task, top, height, left, width, zIndex, isMultiDay, onClick
   const tooltipRef = useRef(null);
   const blockRef = useRef(null);
 
-  // Минимальная высота для отображения (30px)
   const MIN_HEIGHT = 30;
   const isSmall = height < MIN_HEIGHT;
   const displayHeight = isSmall ? MIN_HEIGHT : height;
 
-  // Позиция тултипа
   useEffect(() => {
     if (showTooltip && tooltipRef.current && blockRef.current) {
       const rect = blockRef.current.getBoundingClientRect();
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
       const containerRect = blockRef.current.closest('.day-column').getBoundingClientRect();
       
-      // Позиционируем тултип справа от задачи
       tooltipRef.current.style.top = `${rect.top - containerRect.top - 4}px`;
       tooltipRef.current.style.left = `${rect.right - containerRect.left + 8}px`;
       
-      // Проверяем, не выходит ли за границы экрана
       if (rect.right - containerRect.left + tooltipRect.width + 16 > containerRect.width) {
         tooltipRef.current.style.left = `${rect.left - containerRect.left - tooltipRect.width - 8}px`;
         tooltipRef.current.classList.add('tooltip-left');
@@ -53,13 +49,16 @@ const TaskBlock = ({ task, top, height, left, width, zIndex, isMultiDay, onClick
   const endTime = formatDate(new Date(task.end_time), 'HH:mm');
   const duration = Math.round((new Date(task.end_time) - new Date(task.start_time)) / 60000);
 
-  // Стили для позиционирования блока
+  const categoryColor = task.category?.color || '#3498db';
+  const categoryName = task.category?.name || '';
+
   const blockStyle = {
     top: `${top}px`,
     height: `${displayHeight}px`,
     left: `${left}%`,
     width: `${width}%`,
-    zIndex: isHovered ? 100 : zIndex
+    zIndex: isHovered ? 100 : zIndex,
+    borderLeft: `3px solid ${categoryColor}`
   };
 
   return (
@@ -76,21 +75,16 @@ const TaskBlock = ({ task, top, height, left, width, zIndex, isMultiDay, onClick
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(e); } }}
-        aria-label={`${task.title}, ${startTime} — ${endTime}${isMultiDay ? ', многосуточная' : ''}`}
+        aria-label={`${task.title}, ${startTime} — ${endTime}${isMultiDay ? ', многосуточная' : ''}${categoryName ? `, категория: ${categoryName}` : ''}`}
       >
         {!isSmall && (
           <>
-            {/*
-            <div className="task-block-time">{startTime} — {endTime}</div>
-            */}
             <div className="task-block-title">{task.title}</div>
+            {categoryName && <div className="task-block-category" style={{ color: categoryColor }}>{categoryName}</div>}
           </>
         )}
         {isSmall && (
           <div className="task-small-content">
-            {/*
-            <span className="task-small-time">{startTime}</span>
-            */}
             <span className="task-small-title">{task.title}</span>
           </div>
         )}
@@ -110,6 +104,12 @@ const TaskBlock = ({ task, top, height, left, width, zIndex, isMultiDay, onClick
             <span className="tooltip-duration">{duration} мин</span>
           </div>
           <div className="tooltip-title">{task.title}</div>
+          {categoryName && (
+            <div className="tooltip-category" style={{ borderLeftColor: categoryColor }}>
+              <span className="category-dot" style={{ backgroundColor: categoryColor }}></span>
+              {categoryName}
+            </div>
+          )}
           {task.comment && <div className="tooltip-comment">{task.comment}</div>}
           {isMultiDay && <span className="tooltip-multiday">Многосуточная задача</span>}
         </div>
